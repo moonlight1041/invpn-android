@@ -1,0 +1,62 @@
+name: Build InVPN APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.10'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK packages (platform 36 + NDK 28 + build-tools)
+        run: |
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;28.0.13004108"
+
+      - name: Build libbox.aar from sing-box (gomobile)
+        run: |
+          set -euxo pipefail
+          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/28.0.13004108"
+          export PATH="$PATH:$(go env GOPATH)/bin"
+          git clone --depth 1 -b v1.14.0-alpha.29 https://github.com/SagerNet/sing-box.git /tmp/sing-box
+          cd /tmp/sing-box
+          make lib_install
+          make lib_android
+          AAR="$(find . -name 'libbox.aar' -print -quit)"
+          test -n "$AAR"
+          mkdir -p "$GITHUB_WORKSPACE/app/libs"
+          cp "$AAR" "$GITHUB_WORKSPACE/app/libs/libbox.aar"
+          ls -la "$GITHUB_WORKSPACE/app/libs/"
+
+      - name: Build APK (other flavor / debug)
+        run: ./gradlew :app:assembleOtherDebug --stacktrace --no-daemon
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: InVPN-other-debug
+          path: app/build/outputs/apk/other/debug/*.apk
+          if-no-files-found: error
