@@ -1,44 +1,56 @@
 package io.nekohasekai.sfa.compose.screen.dashboard
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.LockOpen
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import io.nekohasekai.sfa.R
-import io.nekohasekai.sfa.compose.base.UiEvent
 import io.nekohasekai.sfa.compose.navigation.NewProfileArgs
-import io.nekohasekai.sfa.compose.topbar.OverrideTopBar
 import io.nekohasekai.sfa.constant.Status
-import kotlinx.coroutines.launch
 
 data class CardRenderItem(val cards: List<CardGroup>, val isRow: Boolean)
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * InVPN home — glassmorphic, status-centric screen.
+ * One Connect orb, a classical status line, and expandable metrics for the curious.
+ */
 @Composable
 fun DashboardScreen(
     serviceStatus: Status = Status.Stopped,
@@ -48,203 +60,198 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    LaunchedEffect(serviceStatus) { viewModel.updateServiceStatus(serviceStatus) }
 
-    OverrideTopBar {
-        TopAppBar(
-            title = { Text(stringResource(R.string.title_dashboard)) },
-            actions = {
-                IconButton(onClick = { viewModel.toggleCardSettingsDialog() }) {
-                    Icon(
-                        imageVector = Icons.Default.MoreVert,
-                        contentDescription = stringResource(R.string.title_others),
-                    )
-                }
-            },
-        )
-    }
-
-    // Update service status in ViewModel
-    LaunchedEffect(serviceStatus) {
-        viewModel.updateServiceStatus(serviceStatus)
-    }
-
-    // Events are now handled globally in ComposeActivity via GlobalEventBus
-
-    // Show deprecated notes dialog
-    if (uiState.showDeprecatedDialog && uiState.deprecatedNotes.isNotEmpty()) {
-        val note = uiState.deprecatedNotes.first()
-        AlertDialog(
-            onDismissRequest = { },
-            title = { Text(stringResource(R.string.error_deprecated_warning)) },
-            text = { Text(note.message) },
-            confirmButton = {
-                TextButton(onClick = { viewModel.dismissDeprecatedNote() }) {
-                    Text(stringResource(R.string.ok))
-                }
-            },
-            dismissButton =
-            if (!note.migrationLink.isNullOrBlank()) {
-                {
-                    TextButton(onClick = {
-                        viewModel.sendGlobalEvent(UiEvent.OpenUrl(note.migrationLink))
-                        viewModel.dismissDeprecatedNote()
-                    }) {
-                        Text(stringResource(R.string.error_deprecated_documentation))
-                    }
-                }
-            } else {
-                null
-            },
-        )
-    }
-
-    val sheetState = rememberModalBottomSheetState()
-    val scope = rememberCoroutineScope()
-    val context = LocalContext.current
-
-    // Show dashboard settings bottom sheet
-    if (uiState.showCardSettingsDialog) {
-        DashboardSettingsBottomSheet(
-            sheetState = sheetState,
-            visibleCards = uiState.visibleCards,
-            cardOrder = uiState.cardOrder,
-            onToggleCard = viewModel::toggleCardVisibility,
-            onReorderCards = viewModel::reorderCards,
-            onResetOrder = viewModel::resetCardOrder,
-            onDismiss = {
-                scope.launch {
-                    sheetState.hide()
-                    viewModel.closeCardSettingsDialog()
-                }
-            },
-        )
-    }
+    val connected = serviceStatus == Status.Started
+    val transitioning = serviceStatus == Status.Starting || serviceStatus == Status.Stopping
+    val hasProfile = uiState.selectedProfileId != -1L
+    var metricsExpanded by remember { mutableStateOf(false) }
 
     Box(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Brush.verticalGradient(listOf(Color(0xFFF6F3EC), Color(0xFFEAE3D5)))),
     ) {
-        val bottomPadding = when {
-            showStartFab -> 88.dp
-            showStatusBar -> 74.dp
-            else -> 0.dp
-        }
-        LazyColumn(
-            modifier =
-            Modifier
+        // Soft "glass" orbs behind the content (Aegean blue + antique gold haze)
+        Box(
+            modifier = Modifier
+                .size(380.dp)
+                .align(Alignment.TopEnd)
+                .background(Brush.radialGradient(listOf(Color(0x3013507A), Color(0x0013507A))), CircleShape),
+        )
+        Box(
+            modifier = Modifier
+                .size(340.dp)
+                .align(Alignment.BottomStart)
+                .background(Brush.radialGradient(listOf(Color(0x2EB68A44), Color(0x00B68A44))), CircleShape),
+        )
+
+        Column(
+            modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(bottom = bottomPadding),
+                .padding(horizontal = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
         ) {
-            // Dynamic dashboard cards
-            // Show cards when service is running OR if it's the Profiles card (always available)
-            val serviceRunning = uiState.isStatusVisible
+            Text(
+                text = "INVPN",
+                style = MaterialTheme.typography.displaySmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(
+                text = "· IV ·",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.secondary,
+            )
 
-            // Filter cards based on availability
-            val actuallyVisibleCards =
-                uiState.visibleCards.filter { cardGroup ->
-                    when (cardGroup) {
-                        CardGroup.Profiles -> true // Profiles card is always available
-                        else -> serviceRunning && isCardAvailableWhenServiceRunning(cardGroup, uiState)
-                    }
-                }.toSet()
+            Spacer(Modifier.height(44.dp))
 
-            // Process cards to group half-width cards together
-            val cardRenderItems =
-                processCardsForRendering(
-                    cardOrder = uiState.cardOrder,
-                    visibleCards = actuallyVisibleCards,
-                    cardWidths = uiState.cardWidths,
-                )
+            ConnectOrb(
+                connected = connected,
+                transitioning = transitioning,
+                enabled = hasProfile || connected || transitioning,
+                onClick = { viewModel.toggleService() },
+            )
 
-            items(cardRenderItems) { renderItem ->
-                if (renderItem.isRow && renderItem.cards.size >= 2) {
-                    // Render two half-width cards in a row
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                    ) {
-                        renderItem.cards.forEach { cardGroup ->
-                            DashboardCardRenderer(
-                                cardGroup = cardGroup,
-                                cardWidth =
-                                uiState.cardWidths[cardGroup]
-                                    ?: CardWidth.Full,
-                                uiState = uiState,
-                                onClashModeSelected = viewModel::selectClashMode,
-                                onSystemProxyToggle = viewModel::toggleSystemProxy,
-                                // Profile card specific props
-                                profiles = uiState.profiles,
-                                selectedProfileId = uiState.selectedProfileId,
-                                isLoading = uiState.isLoading,
-                                showAddProfileSheet = uiState.showAddProfileSheet,
-                                showProfilePickerSheet = uiState.showProfilePickerSheet,
-                                updatingProfileId = uiState.updatingProfileId,
-                                updatedProfileId = uiState.updatedProfileId,
-                                onProfileSelected = viewModel::selectProfile,
-                                onProfileEdit = viewModel::editProfile,
-                                onProfileDelete = viewModel::deleteProfile,
-                                onProfileShare = viewModel::shareProfile,
-                                onProfileShareURL = viewModel::shareProfileURL,
-                                onProfileUpdate = viewModel::updateProfile,
-                                onProfileMove = viewModel::moveProfile,
-                                onShowAddProfileSheet = viewModel::showAddProfileSheet,
-                                onHideAddProfileSheet = viewModel::hideAddProfileSheet,
-                                onShowProfilePickerSheet = viewModel::showProfilePickerSheet,
-                                onHideProfilePickerSheet = viewModel::hideProfilePickerSheet,
-                                onOpenNewProfile = onOpenNewProfile,
-                                commandClient = viewModel.commandClient,
-                                modifier =
-                                Modifier
-                                    .weight(1f)
-                                    .fillMaxWidth(),
+            Spacer(Modifier.height(28.dp))
+
+            Text(
+                text = when (serviceStatus) {
+                    Status.Started -> "Защищено"
+                    Status.Starting -> "Подключение…"
+                    Status.Stopping -> "Отключение…"
+                    else -> "Не защищено"
+                },
+                style = MaterialTheme.typography.headlineSmall,
+                color = if (connected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Text(
+                text = uiState.selectedProfileName ?: "Профиль не выбран",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+
+            Spacer(Modifier.height(30.dp))
+
+            if (connected) {
+                GlassPanel(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.fillMaxWidth().padding(18.dp)) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { metricsExpanded = !metricsExpanded },
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            MetricInline("↓", uiState.downlink)
+                            MetricInline("↑", uiState.uplink)
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowDown,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.rotate(if (metricsExpanded) 180f else 0f),
                             )
                         }
-                    }
-                } else {
-                    // Render single card (full-width or single half-width)
-                    renderItem.cards.forEach { cardGroup ->
-                        DashboardCardRenderer(
-                            cardGroup = cardGroup,
-                            cardWidth =
-                            uiState.cardWidths[cardGroup]
-                                ?: CardWidth.Full,
-                            uiState = uiState,
-                            serviceStatus = serviceStatus,
-                            onClashModeSelected = viewModel::selectClashMode,
-                            onSystemProxyToggle = viewModel::toggleSystemProxy,
-                            // Profile card specific props
-                            profiles = uiState.profiles,
-                            selectedProfileId = uiState.selectedProfileId,
-                            isLoading = uiState.isLoading,
-                            showAddProfileSheet = uiState.showAddProfileSheet,
-                            showProfilePickerSheet = uiState.showProfilePickerSheet,
-                            updatingProfileId = uiState.updatingProfileId,
-                            updatedProfileId = uiState.updatedProfileId,
-                            onProfileSelected = viewModel::selectProfile,
-                            onProfileEdit = viewModel::editProfile,
-                            onProfileDelete = viewModel::deleteProfile,
-                            onProfileShare = viewModel::shareProfile,
-                            onProfileShareURL = viewModel::shareProfileURL,
-                            onProfileUpdate = viewModel::updateProfile,
-                            onProfileMove = viewModel::moveProfile,
-                            onShowAddProfileSheet = viewModel::showAddProfileSheet,
-                            onHideAddProfileSheet = viewModel::hideAddProfileSheet,
-                            onShowProfilePickerSheet = viewModel::showProfilePickerSheet,
-                            onHideProfilePickerSheet = viewModel::hideProfilePickerSheet,
-                            onOpenNewProfile = onOpenNewProfile,
-                            commandClient = viewModel.commandClient,
-                        )
+                        AnimatedVisibility(visible = metricsExpanded) {
+                            Column(modifier = Modifier.fillMaxWidth().padding(top = 14.dp)) {
+                                MetricRow("Соединения", "${uiState.connectionsIn} вх · ${uiState.connectionsOut} исх")
+                                MetricRow("Отправлено", uiState.uplinkTotal)
+                                MetricRow("Получено", uiState.downlinkTotal)
+                                if (uiState.memory.isNotEmpty()) MetricRow("Память", uiState.memory)
+                            }
+                        }
                     }
                 }
+            } else if (!hasProfile) {
+                Text(
+                    text = "Добавьте профиль, чтобы подключиться",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.clickable { onOpenNewProfile(NewProfileArgs()) },
+                )
             }
         }
     }
 }
 
-/**
- * Process cards for rendering, grouping consecutive half-width cards into rows
- */
+@Composable
+private fun ConnectOrb(connected: Boolean, transitioning: Boolean, enabled: Boolean, onClick: () -> Unit) {
+    val primary = MaterialTheme.colorScheme.primary
+    Box(
+        modifier = Modifier
+            .size(184.dp)
+            .clip(CircleShape)
+            .background(
+                if (connected) {
+                    Brush.verticalGradient(listOf(Color(0xFF2E73A4), Color(0xFF12476C)))
+                } else {
+                    Brush.verticalGradient(listOf(Color(0xCCFFFFFF), Color(0x8FFFFFFF)))
+                },
+            )
+            .border(1.5.dp, if (connected) Color(0x55FFFFFF) else Color(0x70FFFFFF), CircleShape)
+            .clickable(enabled = enabled && !transitioning) { onClick() },
+        contentAlignment = Alignment.Center,
+    ) {
+        if (transitioning) {
+            CircularProgressIndicator(
+                color = if (connected) Color.White else primary,
+                strokeWidth = 3.dp,
+                modifier = Modifier.size(52.dp),
+            )
+        } else {
+            Icon(
+                imageVector = if (connected) Icons.Default.Lock else Icons.Default.LockOpen,
+                contentDescription = null,
+                tint = if (connected) Color.White else primary,
+                modifier = Modifier.size(68.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun GlassPanel(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(24.dp))
+            .background(Color(0xB8FFFFFF))
+            .border(1.dp, Color(0x70FFFFFF), RoundedCornerShape(24.dp)),
+    ) { content() }
+}
+
+@Composable
+private fun MetricInline(arrow: String, value: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(arrow, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.secondary)
+        Spacer(Modifier.width(6.dp))
+        Text(
+            value,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.Medium,
+        )
+    }
+}
+
+@Composable
+private fun MetricRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            fontWeight = FontWeight.Medium,
+        )
+    }
+}
+
+// --- Retained utility (used by the legacy card renderer, kept for compatibility) ---
+
 fun processCardsForRendering(
     cardOrder: List<CardGroup>,
     visibleCards: Set<CardGroup>,
@@ -252,63 +259,29 @@ fun processCardsForRendering(
 ): List<CardRenderItem> {
     val renderItems = mutableListOf<CardRenderItem>()
     val visibleOrderedCards = cardOrder.filter { visibleCards.contains(it) }
-
     var i = 0
     while (i < visibleOrderedCards.size) {
         val currentCard = visibleOrderedCards[i]
         val currentWidth = cardWidths[currentCard] ?: CardWidth.Full
-
-        if (currentWidth == CardWidth.Half) {
-            // Check if next card is also half-width
-            if (i + 1 < visibleOrderedCards.size) {
-                val nextCard = visibleOrderedCards[i + 1]
-                val nextWidth = cardWidths[nextCard] ?: CardWidth.Full
-
-                if (nextWidth == CardWidth.Half) {
-                    // Group two half-width cards together
-                    renderItems.add(
-                        CardRenderItem(
-                            cards = listOf(currentCard, nextCard),
-                            isRow = true,
-                        ),
-                    )
-                    i += 2
-                    continue
-                }
-            }
-            // Single half-width card
-            renderItems.add(
-                CardRenderItem(
-                    cards = listOf(currentCard),
-                    isRow = false,
-                ),
-            )
-        } else {
-            // Full-width card
-            renderItems.add(
-                CardRenderItem(
-                    cards = listOf(currentCard),
-                    isRow = false,
-                ),
-            )
+        if (currentWidth == CardWidth.Half && i + 1 < visibleOrderedCards.size &&
+            (cardWidths[visibleOrderedCards[i + 1]] ?: CardWidth.Full) == CardWidth.Half
+        ) {
+            renderItems.add(CardRenderItem(listOf(currentCard, visibleOrderedCards[i + 1]), true))
+            i += 2
+            continue
         }
+        renderItems.add(CardRenderItem(listOf(currentCard), false))
         i++
     }
-
     return renderItems
 }
 
-/**
- * Determine if a service-dependent card has data available to display.
- * This function is only relevant when the service is running.
- * Note: Profiles card is always available and should not use this function.
- */
 fun isCardAvailableWhenServiceRunning(cardGroup: CardGroup, uiState: DashboardUiState): Boolean = when (cardGroup) {
     CardGroup.ClashMode -> uiState.clashModeVisible
     CardGroup.UploadTraffic -> uiState.trafficVisible
     CardGroup.DownloadTraffic -> uiState.trafficVisible
-    CardGroup.Debug -> true // Debug info is always available when service is running
+    CardGroup.Debug -> true
     CardGroup.Connections -> uiState.trafficVisible
     CardGroup.SystemProxy -> uiState.systemProxyVisible
-    CardGroup.Profiles -> true // This shouldn't be called for Profiles, but return true for safety
+    CardGroup.Profiles -> true
 }

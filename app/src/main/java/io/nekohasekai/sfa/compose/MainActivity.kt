@@ -879,7 +879,7 @@ class MainActivity :
                 )
                 if (!useNavigationRail) {
                     ServiceStatusBar(
-                        visible = showStatusBar && !isSubScreen,
+                        visible = showStatusBar && !isSubScreen && currentRootRoute != Screen.Dashboard.route,
                         serviceStatus = currentServiceStatus,
                         startTime = dashboardUiState.serviceStartTime,
                         groupsCount = dashboardUiState.groupsCount,
@@ -892,7 +892,7 @@ class MainActivity :
                     )
                 }
 
-                val showPadFab = useNavigationRail && !isSubScreen && (showStartFab || showStatusBar)
+                val showPadFab = useNavigationRail && !isSubScreen && (showStartFab || showStatusBar) && currentRootRoute != Screen.Dashboard.route
                 if (useNavigationRail) {
                     androidx.compose.animation.AnimatedVisibility(
                         visible = showPadFab,
@@ -983,7 +983,8 @@ class MainActivity :
                     androidx.compose.animation.AnimatedVisibility(
                         visible = currentServiceStatus == Status.Stopped &&
                             dashboardUiState.selectedProfileId != -1L &&
-                            !isSubScreen,
+                            !isSubScreen &&
+                            currentRootRoute != Screen.Dashboard.route,
                         enter = scaleIn(),
                         exit = scaleOut(),
                         modifier = Modifier
