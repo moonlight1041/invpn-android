@@ -2,11 +2,16 @@ name: Build InVPN APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, "feat/**" ]
   workflow_dispatch:
 
 permissions:
   contents: read
+
+env:
+  GO_VER: "1.25.10"
+  SINGBOX_TAG: "v1.14.0-alpha.29"
+  NDK_VER: "28.0.13004108"
 
 jobs:
   build:
@@ -26,22 +31,32 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.25.10'
+          go-version: ${{ env.GO_VER }}
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install SDK packages (platform 36 + NDK 28 + build-tools)
+      - name: Install SDK packages (platform 36 + NDK + build-tools)
         run: |
           yes | sdkmanager --licenses >/dev/null 2>&1 || true
-          sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;28.0.13004108"
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;${NDK_VER}"
+
+      # Cache the gomobile-built libbox.aar — keyed on Go + sing-box tag.
+      # Building it is the slow part (~minutes); a cache hit makes iterations fast.
+      - name: Cache libbox.aar
+        id: cache-libbox
+        uses: actions/cache@v4
+        with:
+          path: app/libs/libbox.aar
+          key: libbox-aar-${{ runner.os }}-go${{ env.GO_VER }}-${{ env.SINGBOX_TAG }}
 
       - name: Build libbox.aar from sing-box (gomobile)
+        if: steps.cache-libbox.outputs.cache-hit != 'true'
         run: |
           set -euxo pipefail
-          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/28.0.13004108"
+          export ANDROID_NDK_HOME="$ANDROID_HOME/ndk/${NDK_VER}"
           export PATH="$PATH:$(go env GOPATH)/bin"
-          git clone --depth 1 -b v1.14.0-alpha.29 https://github.com/SagerNet/sing-box.git /tmp/sing-box
+          git clone --depth 1 -b "${SINGBOX_TAG}" https://github.com/SagerNet/sing-box.git /tmp/sing-box
           cd /tmp/sing-box
           make lib_install
           make lib_android
@@ -49,7 +64,12 @@ jobs:
           test -n "$AAR"
           mkdir -p "$GITHUB_WORKSPACE/app/libs"
           cp "$AAR" "$GITHUB_WORKSPACE/app/libs/libbox.aar"
-          ls -la "$GITHUB_WORKSPACE/app/libs/"
+
+      - name: Verify libbox.aar present
+        run: ls -la app/libs/
+
+      - name: Unit tests (crypto interop etc.)
+        run: ./gradlew :app:testOtherDebugUnitTest --stacktrace --no-daemon
 
       - name: Build APK (other flavor / debug)
         run: ./gradlew :app:assembleOtherDebug --stacktrace --no-daemon
