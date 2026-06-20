@@ -241,41 +241,8 @@ class MainActivity :
             launchCustomTab(uri.toString())
             return
         }
-        if (uri.scheme == "sing-box" && uri.host == "import-remote-profile") {
-            try {
-                val profile = Libbox.parseRemoteProfileImportLink(uri.toString())
-                pendingImportProfile = Triple(profile.name, profile.host, profile.url)
-                showImportProfileDialog = true
-            } catch (e: Exception) {
-                pendingIntentErrorMessage = e.message ?: "Failed to parse profile link"
-            }
-            return
-        }
-
-        if (intent.action == Intent.ACTION_VIEW &&
-            (uri.scheme == ContentResolver.SCHEME_CONTENT || uri.scheme == ContentResolver.SCHEME_FILE)
-        ) {
-            parseImportLocalProfileJob?.cancel()
-            parseImportLocalProfileJob =
-                lifecycleScope.launch(Dispatchers.IO) {
-                    val importHandler = ProfileImportHandler(this@MainActivity)
-                    when (val result = importHandler.parseUri(uri)) {
-                        is ProfileImportHandler.UriParseResult.Success -> {
-                            withContext(Dispatchers.Main) {
-                                pendingImportLocalProfileName = result.name
-                                pendingImportLocalProfileUri = uri
-                                showImportLocalProfileDialog = true
-                            }
-                        }
-
-                        is ProfileImportHandler.UriParseResult.Error -> {
-                            withContext(Dispatchers.Main) {
-                                pendingIntentErrorMessage = result.message
-                            }
-                        }
-                    }
-                }
-        }
+        // (InVPN) external profile-import intents (sing-box:// links and file open) are
+        // disabled — the per-user config is delivered through the authenticated API only.
     }
 
     @SuppressLint("NewApi")

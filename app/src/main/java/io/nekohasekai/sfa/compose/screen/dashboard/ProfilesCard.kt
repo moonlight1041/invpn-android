@@ -245,29 +245,8 @@ fun ProfilesCard(
                     )
                 }
 
-                Surface(
-                    onClick = onShowAddProfileSheet,
-                    shape = RoundedCornerShape(12.dp),
-                    color = if (isSystemInDarkTheme()) {
-                        lerp(
-                            MaterialTheme.colorScheme.surfaceContainerHighest,
-                            MaterialTheme.colorScheme.surfaceContainerHigh,
-                            0.5f,
-                        )
-                    } else {
-                        MaterialTheme.colorScheme.surfaceDim
-                    },
-                    modifier = Modifier.size(44.dp),
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = stringResource(R.string.add_profile),
-                            modifier = Modifier.size(20.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
+                // (InVPN) add/import-profile button removed — config is delivered via the
+                // authenticated API after login, not pasted/imported by the user.
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -374,85 +353,7 @@ fun ProfilesCard(
         )
     }
 
-    if (showAddProfileSheet) {
-        ModalBottomSheet(
-            onDismissRequest = onHideAddProfileSheet,
-            containerColor = MaterialTheme.colorScheme.surface,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 32.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.add_profile),
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 16.dp),
-                )
-
-                ListItem(
-                    modifier = Modifier.clickable {
-                        onHideAddProfileSheet()
-                        importFromFileLauncher.launch("*/*")
-                    },
-                    leadingContent = {
-                        Icon(
-                            imageVector = Icons.Outlined.FileUpload,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                    },
-                    headlineContent = {
-                        Text(stringResource(R.string.profile_add_import_file))
-                    },
-                    supportingContent = {
-                        Text(stringResource(R.string.import_from_file_description))
-                    },
-                )
-
-                ListItem(
-                    modifier = Modifier.clickable {
-                        onHideAddProfileSheet()
-                        showQRScanSheet = true
-                    },
-                    leadingContent = {
-                        Icon(
-                            imageVector = Icons.Default.QrCodeScanner,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                    },
-                    headlineContent = {
-                        Text(stringResource(R.string.profile_add_scan_qr_code))
-                    },
-                    supportingContent = {
-                        Text(stringResource(R.string.scan_qr_code_description))
-                    },
-                )
-
-                ListItem(
-                    modifier = Modifier.clickable {
-                        onHideAddProfileSheet()
-                        onOpenNewProfile(NewProfileArgs())
-                    },
-                    leadingContent = {
-                        Icon(
-                            imageVector = Icons.Outlined.CreateNewFolder,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                        )
-                    },
-                    headlineContent = {
-                        Text(stringResource(R.string.profile_add_create_manually))
-                    },
-                    supportingContent = {
-                        Text(stringResource(R.string.create_new_profile_description))
-                    },
-                )
-            }
-        }
-    }
+    // (InVPN) add-profile bottom sheet (file import / QR scan / manual create) removed.
 
     if (showQRCodeDialog && qrCodeProfile != null) {
         val profile = qrCodeProfile!!
