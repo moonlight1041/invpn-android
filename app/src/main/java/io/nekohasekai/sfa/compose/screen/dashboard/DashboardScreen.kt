@@ -25,6 +25,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -43,7 +44,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.nekohasekai.sfa.compose.navigation.NewProfileArgs
+import io.nekohasekai.sfa.compose.screen.auth.CreateInviteDialog
 import io.nekohasekai.sfa.constant.Status
+import io.nekohasekai.sfa.invpn.AuthRepository
 
 data class CardRenderItem(val cards: List<CardGroup>, val isRow: Boolean)
 
@@ -66,6 +69,8 @@ fun DashboardScreen(
     val transitioning = serviceStatus == Status.Starting || serviceStatus == Status.Stopping
     val hasProfile = uiState.selectedProfileId != -1L
     var metricsExpanded by remember { mutableStateOf(false) }
+    var showCreateInvite by remember { mutableStateOf(false) }
+    val isBrilliant = remember { AuthRepository.isBrilliant() }
 
     Box(
         modifier = Modifier
@@ -171,7 +176,18 @@ fun DashboardScreen(
                     modifier = Modifier.clickable { onOpenNewProfile(NewProfileArgs()) },
                 )
             }
+
+            if (isBrilliant) {
+                Spacer(Modifier.height(18.dp))
+                TextButton(onClick = { showCreateInvite = true }) {
+                    Text("Создать приглашение", color = MaterialTheme.colorScheme.secondary)
+                }
+            }
         }
+    }
+
+    if (showCreateInvite) {
+        CreateInviteDialog(onDismiss = { showCreateInvite = false })
     }
 }
 

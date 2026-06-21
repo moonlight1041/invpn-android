@@ -22,16 +22,25 @@ import kotlinx.serialization.json.jsonPrimitive
 class ApiException(val code: Int, message: String) : IOException(message)
 
 @Serializable
-data class AuthResult(val device_token: String, val salt_body: String)
+data class AuthResult(val device_token: String, val salt_body: String, val level: String = "GOLDEN", val name: String? = null)
 
 @Serializable
 data class ConfigBlob(val v: Int = 1, val alg: String = "", val nonce: String, val ct: String)
 
 @Serializable
-private data class RegisterReq(val invite_code: String, val username: String, val password: String)
+data class RedeemResult(val device_token: String, val body_key: String, val name: String? = null, val level: String = "GOLDEN")
+
+@Serializable
+data class InviteResult(val code: String, val link: String, val level: String = "GOLDEN", val invitee_name: String? = null)
 
 @Serializable
 private data class LoginReq(val username: String, val password: String)
+
+@Serializable
+private data class RedeemReq(val code: String)
+
+@Serializable
+private data class InviteReq(val invitee_name: String?, val level: String)
 
 /**
  * Authenticated config-delivery client (plan §3). Blocking — call off the main thread.
@@ -40,16 +49,24 @@ private data class LoginReq(val username: String, val password: String)
 object ApiClient {
     private val json = Json { ignoreUnknownKeys = true }
 
-    fun register(inviteCode: String, username: String, password: String): AuthResult =
-        json.decodeFromString(
-            AuthResult.serializer(),
-            postJson("/api/v1/register", json.encodeToString(RegisterReq.serializer(), RegisterReq(inviteCode, username, password))),
-        )
-
     fun login(username: String, password: String): AuthResult =
         json.decodeFromString(
             AuthResult.serializer(),
             postJson("/api/v1/login", json.encodeToString(LoginReq.serializer(), LoginReq(username, password))),
+        )
+
+    /** Passwordless invite redemption — server returns device_token + body_key + name + level. */
+    fun redeem(code: String): RedeemResult =
+        json.decodeFromString(
+            RedeemResult.serializer(),
+            postJson("/api/v1/redeem", json.encodeToString(RedeemReq.serializer(), RedeemReq(code))),
+        )
+
+    /** BRILLIANT only — mint an invite. Returns the shareable link. */
+    fun createInvite(deviceToken: String, name: String?, level: String): InviteResult =
+        json.decodeFromString(
+            InviteResult.serializer(),
+            postJson("/api/v1/invites", json.encodeToString(InviteReq.serializer(), InviteReq(name, level)), bearer = deviceToken),
         )
 
     fun fetchConfig(deviceToken: String): ConfigBlob =

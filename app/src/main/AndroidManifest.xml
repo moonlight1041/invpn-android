@@ -66,8 +66,8 @@
                 <category android:name="android.intent.category.BROWSABLE" />
 
                 <data
-                    android:host="import-remote-profile"
-                    android:scheme="sing-box" />
+                    android:host="i"
+                    android:scheme="invpn" />
 
             </intent-filter>
 

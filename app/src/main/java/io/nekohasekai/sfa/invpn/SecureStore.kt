@@ -17,6 +17,8 @@ data class Credentials(
     val deviceToken: String,
     val saltBodyB64: String,
     val bodyKeyB64: String,
+    val level: String = "GOLDEN",
+    val displayName: String? = null,
 )
 
 /**

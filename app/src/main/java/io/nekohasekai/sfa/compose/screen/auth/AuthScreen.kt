@@ -20,6 +20,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,30 +39,44 @@ import io.nekohasekai.sfa.invpn.AuthRepository
 import io.nekohasekai.sfa.invpn.ConfigInstaller
 import kotlinx.coroutines.launch
 
+/** Carries an invite code captured from an `invpn://i/<code>` deep link into the auth screen. */
+object InviteLinkBus {
+    var pendingCode by mutableStateOf<String?>(null)
+}
+
+/** Accept a full link (`https://…/i/<code>` or `invpn://i/<code>`) or a bare code. */
+fun extractInviteCode(input: String): String {
+    val s = input.trim()
+    val i = s.lastIndexOf("/i/")
+    val raw = if (i >= 0) s.substring(i + 3) else s
+    return raw.substringBefore('?').substringBefore('#').trim()
+}
+
 class AuthViewModel : ViewModel() {
     var loading by mutableStateOf(false)
         private set
     var error by mutableStateOf<String?>(null)
 
-    fun submit(register: Boolean, invite: String, username: String, password: String, onDone: () -> Unit) {
+    fun redeem(codeOrLink: String, onDone: () -> Unit) =
+        perform(onDone) { AuthRepository.redeemInvite(extractInviteCode(codeOrLink)) }
+
+    fun login(username: String, password: String, onDone: () -> Unit) =
+        perform(onDone) { AuthRepository.login(username.trim(), password) }
+
+    private fun perform(onDone: () -> Unit, block: suspend () -> Unit) {
         if (loading) return
         loading = true
         error = null
         viewModelScope.launch {
             try {
-                if (register) {
-                    AuthRepository.register(invite.trim(), username.trim(), password)
-                } else {
-                    AuthRepository.login(username.trim(), password)
-                }
-                // Pull + install the per-user config. Best-effort: if the backend is
-                // unreachable the user is still authenticated and can retry from Connect.
+                block()
+                // Pull + install the per-user config; best-effort (retry from Connect if it fails).
                 runCatching { ConfigInstaller.refreshAndInstall() }
                 onDone()
             } catch (e: ApiException) {
                 error = e.message
             } catch (e: Exception) {
-                error = e.message ?: "Не удалось подключиться"
+                error = e.message ?: "Ошибка сети"
             } finally {
                 loading = false
             }
@@ -69,26 +84,26 @@ class AuthViewModel : ViewModel() {
     }
 }
 
-/** Shows the auth screen until credentials exist, then the real app [content]. */
 @Composable
 fun AuthGate(content: @Composable () -> Unit) {
     var authenticated by remember { mutableStateOf(AuthRepository.isAuthenticated()) }
-    if (authenticated) {
-        content()
-    } else {
-        LoginRegisterScreen(onAuthenticated = { authenticated = true })
-    }
+    if (authenticated) content() else LoginScreen(onAuthenticated = { authenticated = true })
 }
 
 @Composable
-fun LoginRegisterScreen(
+fun LoginScreen(
     onAuthenticated: () -> Unit,
     vm: AuthViewModel = viewModel(),
 ) {
-    var register by remember { mutableStateOf(false) }
+    var useLogin by remember { mutableStateOf(false) }
+    var invite by remember { mutableStateOf(InviteLinkBus.pendingCode ?: "") }
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
-    var invite by remember { mutableStateOf("") }
+
+    // A deep link arriving while this screen is open prefills the invite field.
+    LaunchedEffect(InviteLinkBus.pendingCode) {
+        InviteLinkBus.pendingCode?.let { invite = it; useLogin = false }
+    }
 
     Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(
@@ -107,40 +122,40 @@ fun LoginRegisterScreen(
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                text = if (register) "Регистрация по коду приглашения" else "Вход",
+                text = if (useLogin) "Вход по логину и паролю" else "Активация по ссылке-приглашению",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onBackground,
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(28.dp))
 
-            if (register) {
+            if (useLogin) {
                 OutlinedTextField(
-                    value = invite,
-                    onValueChange = { invite = it },
-                    label = { Text("Код приглашения") },
+                    value = username,
+                    onValueChange = { username = it },
+                    label = { Text("Логин") },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = { password = it },
+                    label = { Text("Пароль") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            } else {
+                OutlinedTextField(
+                    value = invite,
+                    onValueChange = { invite = it },
+                    label = { Text("Ссылка или код приглашения") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
-            OutlinedTextField(
-                value = username,
-                onValueChange = { username = it },
-                label = { Text("Логин") },
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-            )
-            Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
-                value = password,
-                onValueChange = { password = it },
-                label = { Text("Пароль") },
-                singleLine = true,
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                modifier = Modifier.fillMaxWidth(),
-            )
 
             vm.error?.let {
                 Spacer(Modifier.height(14.dp))
@@ -154,11 +169,15 @@ fun LoginRegisterScreen(
 
             Spacer(Modifier.height(28.dp))
             Button(
-                onClick = { vm.submit(register, invite, username, password, onAuthenticated) },
+                onClick = {
+                    if (useLogin) {
+                        vm.login(username, password) { InviteLinkBus.pendingCode = null; onAuthenticated() }
+                    } else {
+                        vm.redeem(invite) { InviteLinkBus.pendingCode = null; onAuthenticated() }
+                    }
+                },
                 enabled = !vm.loading &&
-                    username.isNotBlank() &&
-                    password.length >= 8 &&
-                    (!register || invite.isNotBlank()),
+                    if (useLogin) username.isNotBlank() && password.length >= 8 else invite.isNotBlank(),
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
@@ -170,12 +189,12 @@ fun LoginRegisterScreen(
                         color = MaterialTheme.colorScheme.onPrimary,
                     )
                 } else {
-                    Text(if (register) "Зарегистрироваться" else "Войти")
+                    Text(if (useLogin) "Войти" else "Активировать")
                 }
             }
             Spacer(Modifier.height(8.dp))
-            TextButton(onClick = { register = !register; vm.error = null }) {
-                Text(if (register) "У меня уже есть аккаунт" else "Есть код приглашения — зарегистрироваться")
+            TextButton(onClick = { useLogin = !useLogin; vm.error = null }) {
+                Text(if (useLogin) "У меня есть ссылка-приглашение" else "Войти по логину и паролю")
             }
         }
     }

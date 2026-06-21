@@ -11,32 +11,38 @@ import kotlinx.coroutines.withContext
  */
 object AuthRepository {
 
-    fun isAuthenticated(): Boolean = SecureStore.isLoggedIn(Application.application)
+    private val app get() = Application.application
 
-    fun username(): String? = SecureStore.load(Application.application)?.username
+    fun isAuthenticated(): Boolean = SecureStore.isLoggedIn(app)
+    fun username(): String? = SecureStore.load(app)?.username
+    fun displayName(): String? = SecureStore.load(app)?.displayName
+    fun level(): String = SecureStore.load(app)?.level ?: "GOLDEN"
+    fun isBrilliant(): Boolean = level() == "BRILLIANT"
 
-    suspend fun register(inviteCode: String, username: String, password: String) =
-        withContext(Dispatchers.IO) {
-            persist(username, password, ApiClient.register(inviteCode, username, password))
-        }
-
-    suspend fun login(username: String, password: String) =
-        withContext(Dispatchers.IO) {
-            persist(username, password, ApiClient.login(username, password))
-        }
-
-    fun logout() = SecureStore.clear(Application.application)
-
-    private fun persist(username: String, password: String, r: AuthResult) {
+    /** login+password account: body_key is derived from the password (never stored). */
+    suspend fun login(username: String, password: String) = withContext(Dispatchers.IO) {
+        val r = ApiClient.login(username, password)
         val bodyKey = Crypto.deriveBodyKey(password, Crypto.b64UrlDecode(r.salt_body))
         SecureStore.save(
-            Application.application,
-            Credentials(
-                username = username,
-                deviceToken = r.device_token,
-                saltBodyB64 = r.salt_body,
-                bodyKeyB64 = Crypto.b64UrlEncode(bodyKey),
-            ),
+            app,
+            Credentials(username, r.device_token, r.salt_body, Crypto.b64UrlEncode(bodyKey), r.level, r.name),
         )
     }
+
+    /** passwordless invite-link redemption: body_key arrives from the server over TLS. */
+    suspend fun redeemInvite(code: String) = withContext(Dispatchers.IO) {
+        val r = ApiClient.redeem(code)
+        SecureStore.save(
+            app,
+            Credentials(r.name ?: "(invite)", r.device_token, "", r.body_key, r.level, r.name),
+        )
+    }
+
+    /** BRILLIANT only — mint an invite link and return it. */
+    suspend fun createInvite(name: String?, level: String): String = withContext(Dispatchers.IO) {
+        val token = SecureStore.load(app)?.deviceToken ?: error("not authenticated")
+        ApiClient.createInvite(token, name, level).link
+    }
+
+    fun logout() = SecureStore.clear(app)
 }

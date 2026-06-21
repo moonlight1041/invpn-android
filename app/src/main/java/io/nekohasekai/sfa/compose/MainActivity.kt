@@ -241,6 +241,11 @@ class MainActivity :
             launchCustomTab(uri.toString())
             return
         }
+        if (uri.scheme == "invpn" && uri.host == "i") {       // invite deep link: invpn://i/<code>
+            io.nekohasekai.sfa.compose.screen.auth.InviteLinkBus.pendingCode =
+                uri.lastPathSegment ?: uri.toString()
+            return
+        }
         // (InVPN) external profile-import intents (sing-box:// links and file open) are
         // disabled — the per-user config is delivered through the authenticated API only.
     }
