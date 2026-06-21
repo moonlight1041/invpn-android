@@ -10,9 +10,11 @@ package io.nekohasekai.sfa.invpn
  * as soon as the cert is known, add the pin(s) and pinning is enforced automatically.
  */
 object InVpnConfig {
-    const val API_BASE = "https://api.invpn.invalid" // TODO: real backend domain (Njalla → LUX)
+    const val API_BASE = "https://ofjnb.net" // MVP backend domain (existing infra); → clean LUX host later
 
-    val PINS: Set<String> = emptySet() // TODO: e.g. "k3a1f...=" (sha256 of SubjectPublicKeyInfo)
+    // Empty = trust system CAs (works with a Let's Encrypt cert). Add the server's SPKI
+    // sha256 pin here later for hardening (then ApiClient enforces it automatically).
+    val PINS: Set<String> = emptySet()
 
     /** Single managed profile name created from the fetched config. */
     const val MANAGED_PROFILE_NAME = "InVPN"
