@@ -298,7 +298,7 @@ private val SERVERS = listOf(
     ServerInfo("🇵🇱", "Польша", "Статический"),
     ServerInfo("🇷🇴", "Румыния", "Статический"),
     ServerInfo("🇫🇮", "Финляндия", "Динамический"),
-    ServerInfo("🇺🇸", "США · Нью-Джерси", "Статический", available = false, note = "Доступен 23.06.2026, 08:00 МСК"),
+    ServerInfo("🇺🇸", "США · Нью-Джерси", "Статический", available = false, note = "Скоро"),
 )
 
 @Composable
