@@ -71,6 +71,7 @@ fun DashboardScreen(
     showStartFab: Boolean = false,
     showStatusBar: Boolean = false,
     onOpenNewProfile: (NewProfileArgs) -> Unit = {},
+    onOpenServers: () -> Unit = {},
     viewModel: DashboardViewModel = viewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -170,7 +171,7 @@ fun DashboardScreen(
             }
 
             Spacer(Modifier.height(28.dp))
-            ServersCard(modifier = Modifier.fillMaxWidth())
+            ServersCard(onClick = onOpenServers, modifier = Modifier.fillMaxWidth())
 
             if (isBrilliant) {
                 Spacer(Modifier.height(18.dp))
@@ -284,64 +285,24 @@ private fun MetricRow(label: String, value: String) {
     }
 }
 
-// --- Server catalog shown on the home screen (placeholder data — confirm real list/types) ---
-
-private data class ServerInfo(
-    val flag: String,
-    val country: String,
-    val type: String,            // "Статический" | "Динамический"
-    val available: Boolean = true,
-    val note: String? = null,
-)
-
-private val SERVERS = listOf(
-    ServerInfo("🇵🇱", "Польша", "Статический"),
-    ServerInfo("🇷🇴", "Румыния", "Статический"),
-    ServerInfo("🇫🇮", "Финляндия", "Динамический"),
-    ServerInfo("🇺🇸", "США · Нью-Джерси", "Статический", available = false, note = "Скоро"),
-)
+// --- Servers entry → opens the real, switchable outbound-group selector (Groups screen).
+//     The previous static list was hardcoded/placeholder; real exits + switching come from the
+//     running config's selector group, shown by the Groups screen. ---
 
 @Composable
-private fun ServersCard(modifier: Modifier = Modifier) {
-    GlassPanel(modifier = modifier) {
-        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
-            Text("Серверы", style = MaterialTheme.typography.titleMedium, color = Ink, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(6.dp))
-            SERVERS.forEach { s ->
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(s.flag, style = MaterialTheme.typography.titleMedium)
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            s.country,
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = if (s.available) Ink else InkSoft,
-                            fontWeight = FontWeight.Medium,
-                        )
-                        if (s.note != null) {
-                            Text(s.note, style = MaterialTheme.typography.bodySmall, color = Bronze)
-                        }
-                    }
-                    TypeChip(s.type, s.available)
-                }
+private fun ServersCard(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    GlassPanel(modifier = modifier.clickable { onClick() }) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text("Серверы", style = MaterialTheme.typography.titleMedium, color = Ink, fontWeight = FontWeight.SemiBold)
+                Spacer(Modifier.height(2.dp))
+                Text("Выбрать или переключить сервер", style = MaterialTheme.typography.bodySmall, color = InkSoft)
             }
+            Text("→", style = MaterialTheme.typography.titleLarge, color = Bronze)
         }
-    }
-}
-
-@Composable
-private fun TypeChip(type: String, available: Boolean) {
-    val c = if (!available) InkSoft else if (type == "Статический") Sea else Bronze
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(50))
-            .border(1.dp, c, RoundedCornerShape(50))
-            .padding(horizontal = 10.dp, vertical = 4.dp),
-    ) {
-        Text(type, style = MaterialTheme.typography.labelSmall, color = c)
     }
 }
 

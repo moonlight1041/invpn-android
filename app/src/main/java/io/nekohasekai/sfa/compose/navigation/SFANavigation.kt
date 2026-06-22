@@ -104,6 +104,7 @@ fun SFANavHost(
                     showStartFab = showStartFab,
                     showStatusBar = showStatusBar,
                     onOpenNewProfile = onOpenNewProfile,
+                    onOpenServers = { navController.navigate(Screen.Groups.route) },
                     viewModel = dashboardViewModel,
                 )
             } else {
@@ -112,6 +113,7 @@ fun SFANavHost(
                     showStartFab = showStartFab,
                     showStatusBar = showStatusBar,
                     onOpenNewProfile = onOpenNewProfile,
+                    onOpenServers = { navController.navigate(Screen.Groups.route) },
                 )
             }
         }

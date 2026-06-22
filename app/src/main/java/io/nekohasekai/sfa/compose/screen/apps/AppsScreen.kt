@@ -65,9 +65,15 @@ fun AppsScreen(serviceStatus: Status = Status.Stopped) {
     var excluded by remember { mutableStateOf(SplitTunnel.excluded(context)) }
     var applying by remember { mutableStateOf(false) }
     var dirty by remember { mutableStateOf(false) }
+    var loadError by remember { mutableStateOf<String?>(null) }
 
+    // Loading the installed-app list can throw on some devices (e.g. TransactionTooLargeException
+    // with many apps) or OOM on icon decode. runCatching keeps a failure from crashing the tab and
+    // surfaces it on screen instead of an uncaught LaunchedEffect exception.
     LaunchedEffect(Unit) {
-        apps = withContext(Dispatchers.IO) { loadApps(context) }
+        runCatching { withContext(Dispatchers.IO) { loadApps(context) } }
+            .onSuccess { apps = it }
+            .onFailure { loadError = it.message ?: it.toString(); apps = emptyList() }
     }
 
     Column(
@@ -104,9 +110,17 @@ fun AppsScreen(serviceStatus: Status = Status.Stopped) {
         Spacer(Modifier.height(12.dp))
 
         val list = apps
-        if (list == null) {
+        if (loadError != null) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Не удалось загрузить список приложений: $loadError", color = InkSoft)
+            }
+        } else if (list == null) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = Bronze)
+            }
+        } else if (list.isEmpty()) {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("Приложения не найдены", color = InkSoft)
             }
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
