@@ -13,6 +13,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import io.nekohasekai.sfa.compose.screen.apps.AppsScreen
 import io.nekohasekai.sfa.compose.screen.configuration.NewProfileScreen
 import io.nekohasekai.sfa.compose.screen.connections.ConnectionDetailsRoute
 import io.nekohasekai.sfa.compose.screen.connections.ConnectionsPage
@@ -113,6 +114,10 @@ fun SFANavHost(
                     onOpenNewProfile = onOpenNewProfile,
                 )
             }
+        }
+
+        composable(Screen.Apps.route) {
+            AppsScreen(serviceStatus = serviceStatus)
         }
 
         composable(Screen.Log.route) {

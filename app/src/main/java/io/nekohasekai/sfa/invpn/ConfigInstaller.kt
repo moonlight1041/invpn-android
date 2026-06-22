@@ -32,8 +32,24 @@ object ConfigInstaller {
             Crypto.decryptWithBodyKey(Crypto.b64UrlDecode(creds.bodyKeyB64), blob.nonce, blob.ct),
             Charsets.UTF_8,
         )
-        Libbox.checkConfig(content)
-        install(content)
+        cacheRaw(content)
+        val finalConfig = SplitTunnel.applyExcludes(content)
+        Libbox.checkConfig(finalConfig)
+        install(finalConfig)
+    }
+
+    /** Re-apply the current per-app split-tunnel selection to the installed config, then reload. */
+    suspend fun reapplyExcludes() = withContext(Dispatchers.IO) {
+        val raw = rawFile().takeIf { it.exists() }?.readText() ?: return@withContext
+        val finalConfig = SplitTunnel.applyExcludes(raw)
+        Libbox.checkConfig(finalConfig)
+        install(finalConfig)
+    }
+
+    private fun rawFile(): File = File(Application.application.filesDir, "configs/.raw.json")
+
+    private fun cacheRaw(content: String) {
+        rawFile().apply { parentFile?.mkdirs(); writeText(content) }
     }
 
     private suspend fun install(content: String) {

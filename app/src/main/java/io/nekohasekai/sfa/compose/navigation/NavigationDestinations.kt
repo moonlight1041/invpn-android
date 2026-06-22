@@ -3,6 +3,7 @@ package io.nekohasekai.sfa.compose.navigation
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.TextSnippet
+import androidx.compose.material.icons.filled.Apps
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Settings
@@ -47,12 +48,19 @@ sealed class Screen(val route: String, @StringRes val titleRes: Int, val icon: I
         titleRes = R.string.title_settings,
         icon = Icons.Default.Settings,
     )
+
+    object Apps : Screen(
+        route = "apps",
+        titleRes = R.string.title_apps,
+        icon = Icons.Default.Apps,
+    )
 }
 
+// InVPN bottom bar: Защита · Приложения · Настройки (sing-box's Log/Tools/Connections
+// remain reachable from Settings, not the main bar).
 val bottomNavigationScreens =
     listOf(
         Screen.Dashboard,
-        Screen.Log,
-        Screen.Tools,
+        Screen.Apps,
         Screen.Settings,
     )
