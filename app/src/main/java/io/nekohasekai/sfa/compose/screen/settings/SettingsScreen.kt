@@ -12,6 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.AdminPanelSettings
 import androidx.compose.material.icons.outlined.Code
@@ -21,6 +22,7 @@ import androidx.compose.material.icons.outlined.FilterAlt
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Tune
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -30,12 +32,16 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -44,8 +50,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import io.nekohasekai.sfa.R
+import io.nekohasekai.sfa.compose.navigation.Screen
 import io.nekohasekai.sfa.compose.topbar.OverrideTopBar
 import io.nekohasekai.sfa.database.Settings
+import io.nekohasekai.sfa.invpn.AuthRepository
 import io.nekohasekai.sfa.update.UpdateState
 import io.nekohasekai.sfa.utils.HookModuleUpdateNotifier
 import io.nekohasekai.sfa.utils.HookStatusClient
@@ -68,6 +76,7 @@ fun SettingsScreen(navController: NavController) {
     LaunchedEffect(Unit) {
         HookStatusClient.refresh()
     }
+    var showLogoutConfirm by remember { mutableStateOf(false) }
 
     Column(
         modifier =
@@ -218,6 +227,52 @@ fun SettingsScreen(navController: NavController) {
             }
         }
 
+        // Technical screens (sing-box Log / Connections / Tools) — relinked here after being
+        // dropped from the bottom bar, so they stay reachable without the sing-box look.
+        Text(
+            text = "Технические",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp),
+        )
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        ) {
+            Column {
+                ListItem(
+                    headlineContent = { Text("Журнал", style = MaterialTheme.typography.bodyLarge) },
+                    leadingContent = {
+                        Icon(imageVector = Screen.Log.icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    },
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+                        .clickable { navController.navigate(Screen.Log.route) },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                )
+                ListItem(
+                    headlineContent = { Text("Соединения", style = MaterialTheme.typography.bodyLarge) },
+                    leadingContent = {
+                        Icon(imageVector = Screen.Connections.icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    },
+                    modifier = Modifier.clickable { navController.navigate(Screen.Connections.route) },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                )
+                ListItem(
+                    headlineContent = { Text("Инструменты", style = MaterialTheme.typography.bodyLarge) },
+                    leadingContent = {
+                        Icon(imageVector = Screen.Tools.icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    },
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(bottomStart = 12.dp, bottomEnd = 12.dp))
+                        .clickable { navController.navigate(Screen.Tools.route) },
+                    colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+                )
+            }
+        }
+
         // About Section
         Text(
             text = stringResource(R.string.about),
@@ -344,6 +399,48 @@ fun SettingsScreen(navController: NavController) {
             }
         }
 
+        // Account
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
+        ) {
+            ListItem(
+                headlineContent = {
+                    Text("Выйти из аккаунта", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.error)
+                },
+                leadingContent = {
+                    Icon(imageVector = Icons.AutoMirrored.Outlined.Logout, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                },
+                modifier = Modifier
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { showLogoutConfirm = true },
+                colors = ListItemDefaults.colors(containerColor = Color.Transparent),
+            )
+        }
+
         Spacer(modifier = Modifier.height(16.dp))
+    }
+
+    if (showLogoutConfirm) {
+        AlertDialog(
+            onDismissRequest = { showLogoutConfirm = false },
+            title = { Text("Выйти из аккаунта?") },
+            text = {
+                Text(
+                    "Доступ к VPN на этом устройстве будет удалён. Если вы входили по ссылке-приглашению " +
+                        "(без пароля), повторный вход возможен только по новой ссылке — сохраните её заранее.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { showLogoutConfirm = false; AuthRepository.logout() }) {
+                    Text("Выйти", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLogoutConfirm = false }) { Text("Отмена") }
+            },
+        )
     }
 }

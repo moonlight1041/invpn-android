@@ -2,6 +2,8 @@ package io.nekohasekai.sfa.invpn
 
 import io.nekohasekai.sfa.Application
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.withContext
 
 /**
@@ -12,6 +14,14 @@ import kotlinx.coroutines.withContext
 object AuthRepository {
 
     private val app get() = Application.application
+
+    private val _authState by lazy { MutableStateFlow(SecureStore.isLoggedIn(app)) }
+
+    /** Observable auth state: AuthGate shows the app when true, the login screen when false. */
+    val authState: StateFlow<Boolean> get() = _authState
+
+    /** Re-read persisted creds into [authState] — call after a successful login/redeem. */
+    fun refreshAuthState() { _authState.value = isAuthenticated() }
 
     fun isAuthenticated(): Boolean = SecureStore.isLoggedIn(app)
     fun username(): String? = SecureStore.load(app)?.username
@@ -44,5 +54,8 @@ object AuthRepository {
         ApiClient.createInvite(token, name, level).link
     }
 
-    fun logout() = SecureStore.clear(app)
+    fun logout() {
+        SecureStore.clear(app)
+        _authState.value = false
+    }
 }

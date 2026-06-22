@@ -21,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -86,8 +87,8 @@ class AuthViewModel : ViewModel() {
 
 @Composable
 fun AuthGate(content: @Composable () -> Unit) {
-    var authenticated by remember { mutableStateOf(AuthRepository.isAuthenticated()) }
-    if (authenticated) content() else LoginScreen(onAuthenticated = { authenticated = true })
+    val authenticated by AuthRepository.authState.collectAsState()
+    if (authenticated) content() else LoginScreen(onAuthenticated = { AuthRepository.refreshAuthState() })
 }
 
 @Composable

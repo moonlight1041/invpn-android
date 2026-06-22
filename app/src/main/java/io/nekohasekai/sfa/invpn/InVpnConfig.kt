@@ -12,9 +12,16 @@ package io.nekohasekai.sfa.invpn
 object InVpnConfig {
     const val API_BASE = "https://ofjnb.net" // MVP backend domain (existing infra); → clean LUX host later
 
-    // Empty = trust system CAs (works with a Let's Encrypt cert). Add the server's SPKI
-    // sha256 pin here later for hardening (then ApiClient enforces it automatically).
-    val PINS: Set<String> = emptySet()
+    // SPKI SHA-256 pins (standard base64) for ofjnb.net. ApiClient enforces an ANY-match against
+    // the server-presented chain AFTER normal system-CA validation. We pin the leaf (rotates ~90d),
+    // the Let's Encrypt issuing intermediate (stable across leaf renewals → the primary pin), and the
+    // cross-signed ISRG root present in the served chain (backstop so an intermediate rotation can't
+    // brick the app). Refresh if Let's Encrypt rotates intermediates (announced years in advance).
+    val PINS: Set<String> = setOf(
+        "zRFPPXTDpTUwB+MiZbHezW/i1jzpgyO9t2Gw+zkeaVQ=", // leaf  CN=ofjnb.net
+        "nWN7PSep5XDQdge5zK24CnCRXHr3KvzhKEGxsdqCX9E=", // intermediate (issuer) — renewal-safe
+        "fk6IOKit1ild5647BH06ujSIq5XbCgqlbYl6ANhhi88=", // cross-signed root in chain — backstop
+    )
 
     /** Single managed profile name created from the fetched config. */
     const val MANAGED_PROFILE_NAME = "InVPN"
