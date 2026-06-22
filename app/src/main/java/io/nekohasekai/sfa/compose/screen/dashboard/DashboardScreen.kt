@@ -50,9 +50,18 @@ import io.nekohasekai.sfa.invpn.AuthRepository
 
 data class CardRenderItem(val cards: List<CardGroup>, val isRow: Boolean)
 
+// Palette (marble temple): readable ink/sea type, bronze reserved as the accent.
+private val Marble = Color(0xFFFBF9F4)
+private val Ink = Color(0xFF23201A)
+private val InkSoft = Color(0xFF6E685C)
+private val SeaDark = Color(0xFF0E3A58)
+private val Sea = Color(0xFF13507A)
+private val Bronze = Color(0xFFB68A44)
+private val Protected = Color(0xFF2F7D55)
+
 /**
- * InVPN home — glassmorphic, status-centric screen.
- * One Connect orb, a classical status line, and expandable metrics for the curious.
+ * InVPN home — a marble panel with a bronze "aegis" Connect disc and a laurel tier badge.
+ * One tap protects; the access tier and live status are always visible.
  */
 @Composable
 fun DashboardScreen(
@@ -71,54 +80,43 @@ fun DashboardScreen(
     var metricsExpanded by remember { mutableStateOf(false) }
     var showCreateInvite by remember { mutableStateOf(false) }
     val isBrilliant = remember { AuthRepository.isBrilliant() }
+    val level = remember { AuthRepository.level() }
+    val displayName = remember { AuthRepository.displayName() }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFFF6F3EC), Color(0xFFEAE3D5)))),
+            .background(Brush.verticalGradient(listOf(Color(0xFFF7F3EA), Color(0xFFEAE1CF)))),
     ) {
-        // Soft "glass" orbs behind the content (Aegean blue + antique gold haze)
+        // Soft marble haze (Aegean + bronze) behind the content
         Box(
-            modifier = Modifier
-                .size(380.dp)
-                .align(Alignment.TopEnd)
-                .background(Brush.radialGradient(listOf(Color(0x3013507A), Color(0x0013507A))), CircleShape),
+            Modifier.size(360.dp).align(Alignment.TopEnd)
+                .background(Brush.radialGradient(listOf(Color(0x2213507A), Color(0x0013507A))), CircleShape),
         )
         Box(
-            modifier = Modifier
-                .size(340.dp)
-                .align(Alignment.BottomStart)
-                .background(Brush.radialGradient(listOf(Color(0x2EB68A44), Color(0x00B68A44))), CircleShape),
+            Modifier.size(320.dp).align(Alignment.BottomStart)
+                .background(Brush.radialGradient(listOf(Color(0x24B68A44), Color(0x00B68A44))), CircleShape),
         )
 
+        TierBadge(level, displayName, Modifier.align(Alignment.TopCenter).padding(top = 20.dp))
+
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp),
+            modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center,
         ) {
-            Text(
-                text = "INVPN",
-                style = MaterialTheme.typography.displaySmall,
-                color = MaterialTheme.colorScheme.primary,
-            )
-            Text(
-                text = "· IV ·",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.secondary,
-            )
+            Text("INVPN", style = MaterialTheme.typography.displayMedium, color = SeaDark, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(4.dp))
+            Text("—  ❖  —", style = MaterialTheme.typography.titleMedium, color = Bronze)
 
-            Spacer(Modifier.height(44.dp))
-
-            ConnectOrb(
+            Spacer(Modifier.height(40.dp))
+            ConnectAegis(
                 connected = connected,
                 transitioning = transitioning,
                 enabled = hasProfile || connected || transitioning,
                 onClick = { viewModel.toggleService() },
             )
-
-            Spacer(Modifier.height(28.dp))
+            Spacer(Modifier.height(30.dp))
 
             Text(
                 text = when (serviceStatus) {
@@ -128,33 +126,30 @@ fun DashboardScreen(
                     else -> "Не защищено"
                 },
                 style = MaterialTheme.typography.headlineSmall,
-                color = if (connected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                color = if (connected) Protected else InkSoft,
             )
+            Spacer(Modifier.height(4.dp))
             Text(
-                text = uiState.selectedProfileName ?: "Профиль не выбран",
+                text = if (hasProfile) (uiState.selectedProfileName ?: "Сеть INVPN") else "Нажмите, чтобы подключиться",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = InkSoft,
+                textAlign = TextAlign.Center,
             )
-
-            Spacer(Modifier.height(30.dp))
 
             if (connected) {
+                Spacer(Modifier.height(28.dp))
                 GlassPanel(modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.fillMaxWidth().padding(18.dp)) {
                         Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { metricsExpanded = !metricsExpanded },
+                            modifier = Modifier.fillMaxWidth().clickable { metricsExpanded = !metricsExpanded },
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             MetricInline("↓", uiState.downlink)
                             MetricInline("↑", uiState.uplink)
                             Icon(
-                                imageVector = Icons.Default.KeyboardArrowDown,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.rotate(if (metricsExpanded) 180f else 0f),
+                                Icons.Default.KeyboardArrowDown, null,
+                                tint = InkSoft, modifier = Modifier.rotate(if (metricsExpanded) 180f else 0f),
                             )
                         }
                         AnimatedVisibility(visible = metricsExpanded) {
@@ -167,20 +162,12 @@ fun DashboardScreen(
                         }
                     }
                 }
-            } else if (!hasProfile) {
-                Text(
-                    text = "Добавьте профиль, чтобы подключиться",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.clickable { onOpenNewProfile(NewProfileArgs()) },
-                )
             }
 
             if (isBrilliant) {
-                Spacer(Modifier.height(18.dp))
+                Spacer(Modifier.height(22.dp))
                 TextButton(onClick = { showCreateInvite = true }) {
-                    Text("Создать приглашение", color = MaterialTheme.colorScheme.secondary)
+                    Text("Создать приглашение", color = Bronze, fontWeight = FontWeight.SemiBold)
                 }
             }
         }
@@ -192,36 +179,68 @@ fun DashboardScreen(
 }
 
 @Composable
-private fun ConnectOrb(connected: Boolean, transitioning: Boolean, enabled: Boolean, onClick: () -> Unit) {
-    val primary = MaterialTheme.colorScheme.primary
+private fun TierBadge(level: String, name: String?, modifier: Modifier = Modifier) {
+    val color = when (level) {
+        "BRILLIANT" -> Color(0xFF2E7DA6)
+        "SILVER" -> Color(0xFF8A8F98)
+        else -> Bronze
+    }
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(50))
+            .background(Color(0xCCFBF9F4))
+            .border(1.5.dp, color, RoundedCornerShape(50))
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("❖", color = color, style = MaterialTheme.typography.titleMedium)
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = if (!name.isNullOrBlank()) "$name · $level" else level,
+            color = Ink,
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+@Composable
+private fun ConnectAegis(connected: Boolean, transitioning: Boolean, enabled: Boolean, onClick: () -> Unit) {
     Box(
         modifier = Modifier
-            .size(184.dp)
+            .size(200.dp)
             .clip(CircleShape)
-            .background(
-                if (connected) {
-                    Brush.verticalGradient(listOf(Color(0xFF2E73A4), Color(0xFF12476C)))
-                } else {
-                    Brush.verticalGradient(listOf(Color(0xCCFFFFFF), Color(0x8FFFFFFF)))
-                },
-            )
-            .border(1.5.dp, if (connected) Color(0x55FFFFFF) else Color(0x70FFFFFF), CircleShape)
+            .background(Marble)
+            .border(6.dp, Bronze, CircleShape) // bronze aegis ring
             .clickable(enabled = enabled && !transitioning) { onClick() },
         contentAlignment = Alignment.Center,
     ) {
-        if (transitioning) {
-            CircularProgressIndicator(
-                color = if (connected) Color.White else primary,
-                strokeWidth = 3.dp,
-                modifier = Modifier.size(52.dp),
-            )
-        } else {
-            Icon(
-                imageVector = if (connected) Icons.Default.Lock else Icons.Default.LockOpen,
-                contentDescription = null,
-                tint = if (connected) Color.White else primary,
-                modifier = Modifier.size(68.dp),
-            )
+        Box(
+            modifier = Modifier
+                .size(148.dp)
+                .clip(CircleShape)
+                .background(
+                    if (connected) {
+                        Brush.verticalGradient(listOf(Color(0xFF1C6FA0), SeaDark))
+                    } else {
+                        Brush.verticalGradient(listOf(Color(0xFFF1EADB), Color(0xFFE6DBC4)))
+                    },
+                )
+                .border(2.dp, if (connected) Color(0x55FFFFFF) else Color(0x66B68A44), CircleShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (transitioning) {
+                CircularProgressIndicator(
+                    color = if (connected) Marble else Sea, strokeWidth = 3.dp, modifier = Modifier.size(48.dp),
+                )
+            } else {
+                Icon(
+                    imageVector = if (connected) Icons.Default.Lock else Icons.Default.LockOpen,
+                    contentDescription = null,
+                    tint = if (connected) Marble else Sea,
+                    modifier = Modifier.size(62.dp),
+                )
+            }
         }
     }
 }
@@ -231,22 +250,17 @@ private fun GlassPanel(modifier: Modifier = Modifier, content: @Composable () ->
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(24.dp))
-            .background(Color(0xB8FFFFFF))
-            .border(1.dp, Color(0x70FFFFFF), RoundedCornerShape(24.dp)),
+            .background(Color(0xCCFBF9F4))
+            .border(1.dp, Color(0x66B68A44), RoundedCornerShape(24.dp)),
     ) { content() }
 }
 
 @Composable
 private fun MetricInline(arrow: String, value: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(arrow, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.secondary)
+        Text(arrow, style = MaterialTheme.typography.titleMedium, color = Sea)
         Spacer(Modifier.width(6.dp))
-        Text(
-            value,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            fontWeight = FontWeight.Medium,
-        )
+        Text(value, style = MaterialTheme.typography.titleMedium, color = Ink, fontWeight = FontWeight.Medium)
     }
 }
 
@@ -256,13 +270,8 @@ private fun MetricRow(label: String, value: String) {
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(
-            value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface,
-            fontWeight = FontWeight.Medium,
-        )
+        Text(label, style = MaterialTheme.typography.bodyMedium, color = InkSoft)
+        Text(value, style = MaterialTheme.typography.bodyMedium, color = Ink, fontWeight = FontWeight.Medium)
     }
 }
 
