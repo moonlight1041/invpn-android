@@ -534,8 +534,10 @@ class MainActivity :
             )
         }
 
-        // Handle update check prompt dialog (shown only once on first launch)
-        var showUpdateCheckPrompt by remember { mutableStateOf(!Settings.updateCheckPrompted) }
+        // InVPN is distributed via ofjnb.net/get/. The bundled GitHub update checker targets
+        // SagerNet/sing-box (core) releases — the wrong repo for this fork — so it would nag about
+        // bogus "updates" and try to install non-APK / wrong-signed assets. Never prompt to enable it.
+        var showUpdateCheckPrompt by remember { mutableStateOf(false) }
         if (showUpdateCheckPrompt) {
             AlertDialog(
                 onDismissRequest = {

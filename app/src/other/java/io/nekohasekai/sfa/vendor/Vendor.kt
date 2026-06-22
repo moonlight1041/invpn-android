@@ -99,15 +99,11 @@ object Vendor : VendorInterface {
 
     override val updateSources = listOf(UpdateSource.GITHUB, UpdateSource.FDROID)
 
-    override fun checkUpdateAsync(): UpdateInfo? = when (UpdateSource.fromString(Settings.updateSource)) {
-        UpdateSource.FDROID -> checkFDroidUpdate(Application.application)
-        UpdateSource.GITHUB -> {
-            val track = UpdateTrack.fromString(Settings.updateTrack)
-            GitHubUpdateChecker().use { checker ->
-                checker.checkUpdate(track)
-            }
-        }
-    }
+    // In-app update is disabled for InVPN: this flavor bundles the GitHub checker that targets
+    // SagerNet/sing-box (core) releases — the wrong repo for this fork — so it reports bogus
+    // "updates" and would try to install non-APK / differently-signed assets. InVPN ships via
+    // ofjnb.net/get/. Returning null makes every path (launch check, manual check, worker) a no-op.
+    override fun checkUpdateAsync(): UpdateInfo? = null
 
     override fun scheduleAutoUpdate() {
         UpdateWorker.schedule(io.nekohasekai.sfa.Application.application)
