@@ -4,6 +4,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -101,10 +103,13 @@ fun DashboardScreen(
         TierBadge(level, displayName, Modifier.align(Alignment.TopCenter).padding(top = 20.dp))
 
         Column(
-            modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp),
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
         ) {
+            Spacer(Modifier.height(72.dp))
             Text("INVPN", style = MaterialTheme.typography.displayMedium, color = SeaDark, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(4.dp))
             Text("—  ❖  —", style = MaterialTheme.typography.titleMedium, color = Bronze)
@@ -164,12 +169,16 @@ fun DashboardScreen(
                 }
             }
 
+            Spacer(Modifier.height(28.dp))
+            ServersCard(modifier = Modifier.fillMaxWidth())
+
             if (isBrilliant) {
-                Spacer(Modifier.height(22.dp))
+                Spacer(Modifier.height(18.dp))
                 TextButton(onClick = { showCreateInvite = true }) {
                     Text("Создать приглашение", color = Bronze, fontWeight = FontWeight.SemiBold)
                 }
             }
+            Spacer(Modifier.height(32.dp))
         }
     }
 
@@ -272,6 +281,67 @@ private fun MetricRow(label: String, value: String) {
     ) {
         Text(label, style = MaterialTheme.typography.bodyMedium, color = InkSoft)
         Text(value, style = MaterialTheme.typography.bodyMedium, color = Ink, fontWeight = FontWeight.Medium)
+    }
+}
+
+// --- Server catalog shown on the home screen (placeholder data — confirm real list/types) ---
+
+private data class ServerInfo(
+    val flag: String,
+    val country: String,
+    val type: String,            // "Статический" | "Динамический"
+    val available: Boolean = true,
+    val note: String? = null,
+)
+
+private val SERVERS = listOf(
+    ServerInfo("🇵🇱", "Польша", "Статический"),
+    ServerInfo("🇷🇴", "Румыния", "Статический"),
+    ServerInfo("🇫🇮", "Финляндия", "Динамический"),
+    ServerInfo("🇺🇸", "США · Нью-Джерси", "Статический", available = false, note = "Доступен 23.06.2026, 08:00 МСК"),
+)
+
+@Composable
+private fun ServersCard(modifier: Modifier = Modifier) {
+    GlassPanel(modifier = modifier) {
+        Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+            Text("Серверы", style = MaterialTheme.typography.titleMedium, color = Ink, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(6.dp))
+            SERVERS.forEach { s ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(s.flag, style = MaterialTheme.typography.titleMedium)
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            s.country,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = if (s.available) Ink else InkSoft,
+                            fontWeight = FontWeight.Medium,
+                        )
+                        if (s.note != null) {
+                            Text(s.note, style = MaterialTheme.typography.bodySmall, color = Bronze)
+                        }
+                    }
+                    TypeChip(s.type, s.available)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TypeChip(type: String, available: Boolean) {
+    val c = if (!available) InkSoft else if (type == "Статический") Sea else Bronze
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(50))
+            .border(1.dp, c, RoundedCornerShape(50))
+            .padding(horizontal = 10.dp, vertical = 4.dp),
+    ) {
+        Text(type, style = MaterialTheme.typography.labelSmall, color = c)
     }
 }
 

@@ -16,11 +16,21 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      # Base64 of a .properties file with KEYSTORE_PASS / ALIAS_NAME / ALIAS_PASS.
+      # getProps() in app/build.gradle.kts reads this -> enables stable release signing.
+      LOCAL_PROPERTIES: ${{ secrets.LOCAL_PROPERTIES }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           submodules: recursive
+
+      # Stable signing key so APKs install over the previous version without uninstall.
+      - name: Restore release keystore
+        run: |
+          echo "${{ secrets.KEYSTORE_B64 }}" | base64 -d > app/release.keystore
+          test -s app/release.keystore && echo "keystore restored ($(wc -c < app/release.keystore) bytes)"
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
