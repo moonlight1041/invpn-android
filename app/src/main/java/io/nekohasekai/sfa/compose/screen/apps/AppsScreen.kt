@@ -4,7 +4,6 @@ import android.content.Intent
 import android.content.pm.ApplicationInfo
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,11 +17,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -34,8 +35,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -50,11 +49,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private data class AppRow(val pkg: String, val label: String, val appInfo: ApplicationInfo)
-
-private val Marble = Color(0xFFF7F3EA)
-private val Ink = Color(0xFF23201A)
-private val InkSoft = Color(0xFF6E685C)
-private val Bronze = Color(0xFFB68A44)
 
 /**
  * Per-app split tunneling. A switch per app: ON = traffic goes through the VPN, OFF = direct.
@@ -76,6 +70,12 @@ fun AppsScreen(serviceStatus: Status = Status.Stopped) {
     var dirty by remember { mutableStateOf(false) }
     var loadError by remember { mutableStateOf<String?>(null) }
 
+    val ink = MaterialTheme.colorScheme.onBackground
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    val hairline = MaterialTheme.colorScheme.outline
+    val faint = MaterialTheme.colorScheme.outlineVariant
+    val accent = MaterialTheme.colorScheme.primary
+
     LaunchedEffect(Unit) {
         runCatching { withContext(Dispatchers.IO) { loadApps(context) } }
             .onSuccess { apps = it }
@@ -85,17 +85,25 @@ fun AppsScreen(serviceStatus: Status = Status.Stopped) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Brush.verticalGradient(listOf(Color(0xFFF7F3EA), Color(0xFFEFE7D6))))
-            .padding(horizontal = 18.dp),
+            .background(MaterialTheme.colorScheme.background)
+            .padding(horizontal = 20.dp),
     ) {
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
         Text(
-            "VPN идёт только через включённые приложения. Российские приложения по умолчанию идут напрямую, мимо VPN.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = InkSoft,
+            "Приложения",
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = ink,
         )
-        Spacer(Modifier.height(12.dp))
-        Button(
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "Включённые идут через VPN, остальные — напрямую.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = muted,
+        )
+        Spacer(Modifier.height(16.dp))
+
+        TextButton(
             onClick = {
                 applying = true
                 scope.launch {
@@ -105,28 +113,41 @@ fun AppsScreen(serviceStatus: Status = Status.Stopped) {
                 }
             },
             enabled = dirty && !applying,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.align(Alignment.Start),
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 4.dp, vertical = 4.dp),
         ) {
             if (applying) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Marble)
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = accent)
             } else {
-                Text(if (serviceStatus == Status.Started) "Применить и обновить" else "Применить")
+                Text(
+                    if (serviceStatus == Status.Started) "Применить и обновить" else "Применить",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = accent,
+                )
             }
         }
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
 
         val list = apps
         if (loadError != null) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Не удалось загрузить список приложений: $loadError", color = InkSoft)
+                Text(
+                    "Не удалось загрузить список приложений: $loadError",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = muted,
+                )
             }
         } else if (list == null) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Bronze)
+                CircularProgressIndicator(color = accent)
             }
         } else if (list.isEmpty()) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Приложения не найдены", color = InkSoft)
+                Text(
+                    "Приложения не найдены",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = muted,
+                )
             }
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -142,7 +163,9 @@ fun AppsScreen(serviceStatus: Status = Status.Stopped) {
                         }
                     }
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         val bmp = icon
@@ -150,20 +173,34 @@ fun AppsScreen(serviceStatus: Status = Status.Stopped) {
                             Image(
                                 bitmap = bmp,
                                 contentDescription = null,
-                                modifier = Modifier.size(40.dp).clip(RoundedCornerShape(9.dp)),
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .clip(RoundedCornerShape(7.dp)),
                             )
                         } else {
-                            Box(Modifier.size(40.dp).clip(RoundedCornerShape(9.dp)).background(Color(0x22B68A44)))
-                        }
-                        Spacer(Modifier.width(14.dp))
-                        Column(Modifier.weight(1f)) {
-                            Text(app.label, style = MaterialTheme.typography.bodyLarge, color = Ink, fontWeight = FontWeight.Medium, maxLines = 1)
-                            Text(
-                                if (throughVpn) "через VPN" else "напрямую",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = if (throughVpn) Bronze else InkSoft,
+                            Box(
+                                Modifier
+                                    .size(28.dp)
+                                    .clip(RoundedCornerShape(7.dp))
+                                    .background(faint),
                             )
                         }
+                        Spacer(Modifier.width(14.dp))
+                        Text(
+                            app.label,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = ink,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            modifier = Modifier.weight(1f),
+                        )
+                        Spacer(Modifier.width(12.dp))
+                        Text(
+                            if (throughVpn) "VPN" else "Напрямую",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (throughVpn) ink else muted,
+                        )
+                        Spacer(Modifier.width(12.dp))
                         Switch(
                             checked = throughVpn,
                             onCheckedChange = { on ->
@@ -171,8 +208,17 @@ fun AppsScreen(serviceStatus: Status = Status.Stopped) {
                                 excluded = SplitTunnel.excluded(context)
                                 dirty = true
                             },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                checkedTrackColor = accent,
+                                checkedBorderColor = accent,
+                                uncheckedThumbColor = muted,
+                                uncheckedTrackColor = MaterialTheme.colorScheme.background,
+                                uncheckedBorderColor = hairline,
+                            ),
                         )
                     }
+                    HorizontalDivider(thickness = 1.dp, color = hairline)
                 }
             }
         }

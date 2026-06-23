@@ -2,42 +2,62 @@ package io.nekohasekai.sfa.compose.theme
 
 import androidx.compose.ui.graphics.Color
 
-// InVPN — Greco-Roman light palette (Aegean blue + antique gold on marble)
-val AegeanBlue = Color(0xFF13507A)
-val AegeanBlueDark = Color(0xFF0E3A58)
-val AegeanBlueLight = Color(0xFF3E7BA6)
-val AntiqueGold = Color(0xFFB68A44)
-val AntiqueGoldLight = Color(0xFFD9B978)
-val MarbleBg = Color(0xFFF2EFE8)
-val MarbleSurface = Color(0xFFFBF9F4)
-val InkText = Color(0xFF23201A)
-val InkMuted = Color(0xFF6E685C)
+// =====================================================================================
+// InVPN — minimal monochrome palette (single periwinkle accent), light + dark.
+// Replaces the former Greco-Roman palette. Old symbol names are kept and re-valued so
+// existing screens keep compiling; new UI should prefer MaterialTheme.colorScheme.
+// =====================================================================================
 
-// Back-compat names (referenced across the app), re-valued to the new palette
-val SingBoxPrimary = AegeanBlue
-val SingBoxPrimaryDark = AegeanBlueDark
-val SingBoxPrimaryLight = AegeanBlueLight
+// -- New minimal tokens -------------------------------------------------------
+// Light
+val MinBgLight = Color(0xFFF7F7F5)
+val MinInkLight = Color(0xFF16161A)
+val MinSubLight = Color(0x7A16161A) // ink @ ~48%
+val MinLineLight = Color(0x1F16161A) // ink @ ~12%
+val MinFaintLight = Color(0x1416161A) // ink @ ~8%
+val MinAccentLight = Color(0xFF8F91DD)
+val MinAccentInkLight = Color(0xFFFFFFFF) // text/icon ON accent
+// Dark
+val MinBgDark = Color(0xFF0E0E10)
+val MinInkDark = Color(0xFFF3F3F1)
+val MinSubDark = Color(0x80F3F3F1) // ink @ ~50%
+val MinLineDark = Color(0x21F3F3F1) // ink @ ~13%
+val MinFaintDark = Color(0x1AF3F3F1) // ink @ ~10%
+val MinAccentDark = Color(0xFFAEB0F2)
+val MinAccentInkDark = Color(0xFF0E0E10)
 
-// Service status colors
-val ServiceRunning = Color(0xFF4CAF50)
+// -- Back-compat names (re-valued to the minimal palette) ---------------------
+val AegeanBlue = MinAccentLight
+val AegeanBlueDark = Color(0xFF6B6DC4)
+val AegeanBlueLight = MinAccentDark
+val AntiqueGold = MinAccentLight
+val AntiqueGoldLight = MinAccentDark
+val MarbleBg = MinBgLight
+val MarbleSurface = MinBgLight
+val InkText = MinInkLight
+val InkMuted = MinSubLight
+
+val SingBoxPrimary = MinAccentLight
+val SingBoxPrimaryDark = Color(0xFF6B6DC4)
+val SingBoxPrimaryLight = MinAccentDark
+
+// -- Functional colors (service status + log viewer + semantic) ---------------
+val ServiceRunning = MinAccentLight
 val ServiceStopped = Color(0xFF9E9E9E)
-val ServiceError = Color(0xFFF44336)
+val ServiceError = Color(0xFFE5484D)
 
-// Log colors
 val LogRed = Color(0xFFFF2158)
 val LogGreen = Color(0xFF2ECC71)
-val LogYellow = Color(0xFFE5E500)
+val LogYellow = Color(0xFFE5C500)
 val LogBlue = Color(0xFF3498DB)
-val LogPurple = Color(0xFFE500E5)
+val LogPurple = Color(0xFF8F91DD)
 val LogRedLight = Color(0xFFE91E63)
 val LogBlueLight = Color(0xFF00A6B2)
 val LogWhite = Color(0xFFECECEC)
 
-// Material You seed color
-val SeedColor = Color(0xFFD81B60)
+val SeedColor = MinAccentLight
 
-// Additional semantic colors
-val SuccessGreen = Color(0xFF4CAF50)
-val WarningOrange = Color(0xFFFF9800)
-val ErrorRed = Color(0xFFF44336)
-val InfoBlue = Color(0xFF2196F3)
+val SuccessGreen = Color(0xFF30A46C)
+val WarningOrange = Color(0xFFFFB224)
+val ErrorRed = Color(0xFFE5484D)
+val InfoBlue = Color(0xFF3498DB)

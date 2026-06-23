@@ -12,52 +12,92 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
-// InVPN light scheme — marble background, Aegean blue primary, antique gold secondary.
+// InVPN minimal — light: near-white #F7F7F5 ground, ink #16161A, periwinkle accent.
 private val LightColorScheme =
     lightColorScheme(
-        primary = AegeanBlue,
-        onPrimary = Color.White,
-        primaryContainer = Color(0xFFD7E4EF),
-        onPrimaryContainer = AegeanBlueDark,
-        secondary = AntiqueGold,
-        onSecondary = Color.White,
-        secondaryContainer = Color(0xFFEFE2C6),
-        onSecondaryContainer = Color(0xFF4A3A14),
-        tertiary = AegeanBlueLight,
-        background = MarbleBg,
-        onBackground = InkText,
-        surface = MarbleSurface,
-        onSurface = InkText,
-        surfaceVariant = Color(0xFFE9E3D6),
-        onSurfaceVariant = InkMuted,
-        outline = Color(0xFFC7BFAD),
-        outlineVariant = Color(0xFFDED7C7),
+        primary = MinAccentLight,
+        onPrimary = MinAccentInkLight,
+        primaryContainer = MinFaintLight,
+        onPrimaryContainer = MinInkLight,
+        inversePrimary = MinAccentDark,
+        secondary = MinInkLight,
+        onSecondary = MinBgLight,
+        secondaryContainer = MinFaintLight,
+        onSecondaryContainer = MinInkLight,
+        tertiary = MinAccentLight,
+        onTertiary = MinAccentInkLight,
+        tertiaryContainer = MinFaintLight,
+        onTertiaryContainer = MinInkLight,
+        background = MinBgLight,
+        onBackground = MinInkLight,
+        surface = MinBgLight,
+        onSurface = MinInkLight,
+        surfaceVariant = MinFaintLight,
+        onSurfaceVariant = MinSubLight,
+        surfaceTint = Color.Transparent,
+        inverseSurface = MinInkLight,
+        inverseOnSurface = MinBgLight,
+        surfaceBright = MinBgLight,
+        surfaceDim = Color(0xFFEDEDEA),
+        surfaceContainerLowest = Color(0xFFFFFFFF),
+        surfaceContainerLow = MinBgLight,
+        surfaceContainer = Color(0xFFF2F2EF),
+        surfaceContainerHigh = Color(0xFFEDEDEA),
+        surfaceContainerHighest = Color(0xFFE8E8E4),
+        outline = MinLineLight,
+        outlineVariant = MinFaintLight,
         error = ErrorRed,
         onError = Color.White,
+        errorContainer = Color(0xFFF9DEDE),
+        onErrorContainer = Color(0xFF6E1212),
+        scrim = Color(0xCC000000),
     )
 
-// InVPN dark scheme — classical charcoal with blue/gold accents.
+// InVPN minimal — dark: near-black #0E0E10 ground, off-white ink, lighter periwinkle.
 private val DarkColorScheme =
     darkColorScheme(
-        primary = AegeanBlueLight,
-        onPrimary = Color(0xFF071520),
-        secondary = AntiqueGoldLight,
-        onSecondary = Color(0xFF241A06),
-        tertiary = AegeanBlueLight,
-        background = Color(0xFF14161A),
-        onBackground = Color(0xFFE8E3D7),
-        surface = Color(0xFF1C1F24),
-        onSurface = Color(0xFFE8E3D7),
-        surfaceVariant = Color(0xFF2A2E35),
-        onSurfaceVariant = Color(0xFFBEB8A9),
-        outline = Color(0xFF4B4F57),
-        error = Color(0xFFE0A0A0),
+        primary = MinAccentDark,
+        onPrimary = MinAccentInkDark,
+        primaryContainer = MinFaintDark,
+        onPrimaryContainer = MinInkDark,
+        inversePrimary = MinAccentLight,
+        secondary = MinInkDark,
+        onSecondary = MinBgDark,
+        secondaryContainer = MinFaintDark,
+        onSecondaryContainer = MinInkDark,
+        tertiary = MinAccentDark,
+        onTertiary = MinAccentInkDark,
+        tertiaryContainer = MinFaintDark,
+        onTertiaryContainer = MinInkDark,
+        background = MinBgDark,
+        onBackground = MinInkDark,
+        surface = MinBgDark,
+        onSurface = MinInkDark,
+        surfaceVariant = MinFaintDark,
+        onSurfaceVariant = MinSubDark,
+        surfaceTint = Color.Transparent,
+        inverseSurface = MinInkDark,
+        inverseOnSurface = MinBgDark,
+        surfaceBright = Color(0xFF26262A),
+        surfaceDim = MinBgDark,
+        surfaceContainerLowest = Color(0xFF090909),
+        surfaceContainerLow = Color(0xFF131316),
+        surfaceContainer = Color(0xFF161619),
+        surfaceContainerHigh = Color(0xFF1E1E22),
+        surfaceContainerHighest = Color(0xFF26262A),
+        outline = MinLineDark,
+        outlineVariant = MinFaintDark,
+        error = Color(0xFFE5808A),
+        onError = Color(0xFF1A0A0C),
+        errorContainer = Color(0xFF5A2326),
+        onErrorContainer = Color(0xFFF6D6D8),
+        scrim = Color(0xCC000000),
     )
 
 @Composable
 fun SFATheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    // InVPN uses its own fixed palette — dynamic (Material You) disabled on purpose.
+    // InVPN uses its own fixed minimal palette — dynamic (Material You) disabled on purpose.
     dynamicColor: Boolean = false,
     content: @Composable () -> Unit,
 ) {
@@ -67,7 +107,7 @@ fun SFATheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as? Activity)?.window ?: return@SideEffect
-            window.statusBarColor = colorScheme.surface.toArgb()
+            window.statusBarColor = colorScheme.background.toArgb()
             window.navigationBarColor = colorScheme.background.toArgb()
             WindowCompat.getInsetsController(window, view).apply {
                 isAppearanceLightStatusBars = !darkTheme

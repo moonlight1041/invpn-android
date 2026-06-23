@@ -1,6 +1,9 @@
 package io.nekohasekai.sfa.compose.screen.auth
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,15 +13,17 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -28,6 +33,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
@@ -106,97 +116,169 @@ fun LoginScreen(
         InviteLinkBus.pendingCode?.let { invite = it; useLogin = false }
     }
 
-    Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .imePadding()
-                .padding(horizontal = 28.dp, vertical = 48.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center,
-        ) {
-            Text(
-                text = "INVPN",
-                style = MaterialTheme.typography.displayMedium,
-                color = MaterialTheme.colorScheme.primary,
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(rememberScrollState())
+            .imePadding()
+            .padding(horizontal = 32.dp, vertical = 48.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        LogoMark()
+
+        Spacer(Modifier.height(28.dp))
+        Text(
+            text = "INVPN",
+            style = MaterialTheme.typography.displayMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        Spacer(Modifier.height(10.dp))
+        Text(
+            text = if (useLogin) {
+                "Вход по логину и паролю."
+            } else {
+                "Тихий и быстрый VPN. Войдите, чтобы начать."
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+
+        Spacer(Modifier.height(40.dp))
+
+        if (useLogin) {
+            MinimalField(
+                value = username,
+                onValueChange = { username = it },
+                label = "Логин",
             )
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(18.dp))
+            MinimalField(
+                value = password,
+                onValueChange = { password = it },
+                label = "Пароль",
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            )
+        } else {
+            MinimalField(
+                value = invite,
+                onValueChange = { invite = it },
+                label = "Ссылка или код приглашения",
+            )
+        }
+
+        vm.error?.let {
+            Spacer(Modifier.height(18.dp))
             Text(
-                text = if (useLogin) "Вход по логину и паролю" else "Активация по ссылке-приглашению",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onBackground,
+                text = it,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium,
                 textAlign = TextAlign.Center,
             )
-            Spacer(Modifier.height(28.dp))
+        }
 
-            if (useLogin) {
-                OutlinedTextField(
-                    value = username,
-                    onValueChange = { username = it },
-                    label = { Text("Логин") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Spacer(Modifier.height(12.dp))
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { password = it },
-                    label = { Text("Пароль") },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                    modifier = Modifier.fillMaxWidth(),
+        Spacer(Modifier.height(36.dp))
+        Button(
+            onClick = {
+                if (useLogin) {
+                    vm.login(username, password) { InviteLinkBus.pendingCode = null; onAuthenticated() }
+                } else {
+                    vm.redeem(invite) { InviteLinkBus.pendingCode = null; onAuthenticated() }
+                }
+            },
+            enabled = !vm.loading &&
+                if (useLogin) username.isNotBlank() && password.length >= 8 else invite.isNotBlank(),
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(54.dp),
+        ) {
+            if (vm.loading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(22.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.onPrimary,
                 )
             } else {
-                OutlinedTextField(
-                    value = invite,
-                    onValueChange = { invite = it },
-                    label = { Text("Ссылка или код приглашения") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-
-            vm.error?.let {
-                Spacer(Modifier.height(14.dp))
                 Text(
-                    text = it,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                    textAlign = TextAlign.Center,
+                    text = if (useLogin) "Войти" else "Активировать",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
                 )
-            }
-
-            Spacer(Modifier.height(28.dp))
-            Button(
-                onClick = {
-                    if (useLogin) {
-                        vm.login(username, password) { InviteLinkBus.pendingCode = null; onAuthenticated() }
-                    } else {
-                        vm.redeem(invite) { InviteLinkBus.pendingCode = null; onAuthenticated() }
-                    }
-                },
-                enabled = !vm.loading &&
-                    if (useLogin) username.isNotBlank() && password.length >= 8 else invite.isNotBlank(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
-            ) {
-                if (vm.loading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(22.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                    )
-                } else {
-                    Text(if (useLogin) "Войти" else "Активировать")
-                }
-            }
-            Spacer(Modifier.height(8.dp))
-            TextButton(onClick = { useLogin = !useLogin; vm.error = null }) {
-                Text(if (useLogin) "У меня есть ссылка-приглашение" else "Войти по логину и паролю")
             }
         }
+
+        Spacer(Modifier.height(14.dp))
+        TextButton(onClick = { useLogin = !useLogin; vm.error = null }) {
+            Text(
+                text = if (useLogin) "У меня есть ссылка-приглашение" else "Войти по логину и паролю",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
+}
+
+/** A simple outlined circle with a short vertical tick — the InVPN mark. */
+@Composable
+private fun LogoMark() {
+    val ink = MaterialTheme.colorScheme.onBackground
+    Box(modifier = Modifier.size(56.dp), contentAlignment = Alignment.Center) {
+        Canvas(modifier = Modifier.size(56.dp)) {
+            val sw = 2.dp.toPx()
+            val d = size.minDimension - sw
+            drawCircle(color = ink, radius = d / 2f, style = Stroke(sw))
+            val cx = size.width / 2f
+            drawLine(
+                color = ink,
+                start = Offset(cx, size.height * 0.26f),
+                end = Offset(cx, size.height * 0.62f),
+                strokeWidth = sw,
+                cap = StrokeCap.Round,
+            )
+        }
+    }
+}
+
+/** Borderless, underline-style input: transparent fill, a single hairline at the bottom. */
+@Composable
+private fun MinimalField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    visualTransformation: androidx.compose.ui.text.input.VisualTransformation =
+        androidx.compose.ui.text.input.VisualTransformation.None,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+) {
+    TextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        singleLine = true,
+        visualTransformation = visualTransformation,
+        keyboardOptions = keyboardOptions,
+        textStyle = MaterialTheme.typography.bodyLarge,
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = Color.Transparent,
+            unfocusedContainerColor = Color.Transparent,
+            disabledContainerColor = Color.Transparent,
+            errorContainerColor = Color.Transparent,
+            cursorColor = MaterialTheme.colorScheme.primary,
+            focusedIndicatorColor = MaterialTheme.colorScheme.primary,
+            unfocusedIndicatorColor = MaterialTheme.colorScheme.outline,
+            focusedLabelColor = MaterialTheme.colorScheme.primary,
+            unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            focusedTextColor = MaterialTheme.colorScheme.onBackground,
+            unfocusedTextColor = MaterialTheme.colorScheme.onBackground,
+        ),
+        modifier = Modifier.fillMaxWidth(),
+    )
 }
